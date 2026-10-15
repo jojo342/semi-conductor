@@ -13,9 +13,8 @@ What's different from the original:
   - **Winter**: Vivaldi's *Winter* (L'inverno, RV 297, Op. 8 No. 4), first
     movement, bars 1-26, converted from the
     [Mutopia Project](https://www.mutopiaproject.org/) edition
-    ([CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/)). The
-    solo violin's fastest 32nd-note runs are thinned to 16th notes and the
-    starting tempo is 92 bpm, so the violins can be heard clearly.
+    ([CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/)),
+    every note of the solo violin included, starting at 110 bpm.
   - **Can-Can**: the main theme of Offenbach's *Galop infernal*, arranged
     for strings as an oom-pah galop (public-domain melody).
   - **The Star-Spangled Banner**: the full melody in B-flat with a simple

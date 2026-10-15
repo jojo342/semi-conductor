@@ -92,27 +92,17 @@ def make_winter():
             out.append((s / tpb, d / tpb, n))
         return out
 
-    def thin_runs(evts):
-        # The solo violin's 32nd-note runs are too fast to hear clearly with
-        # these samples, so keep only the notes on 16th-note positions
-        out = []
-        for s, d, n in evts:
-            if d < 0.25 and abs(s * 4 - round(s * 4)) > 1e-6:
-                continue
-            out.append((s, max(d, 0.25) if d < 0.25 else d, n))
-        return out
-
     solo, v1, v2, viola, cello = [notes(t) for t in m.tracks[1:6]]
     cello = clip(cello)
     tracks = {
-        'violin': thin_runs(clip(solo)),
+        'violin': clip(solo),
         'string ensemble 1': clip(v1 + v2),
         'viola': clip(viola),
         'cello': cello,
         # Double bass plays the cello line an octave lower (when in range)
         'contrabass': [(s, d, n - 12 if n - 12 >= 28 else n) for s, d, n in cello],
     }
-    write_song('winter.json', "Winter (L'inverno) – Vivaldi", 92, 4, tracks,
+    write_song('winter.json', "Winter (L'inverno) – Vivaldi", 110, 4, tracks,
                end / tpb + final_beats)
 
 
