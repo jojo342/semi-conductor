@@ -29,8 +29,8 @@ import PoseController from './pose-controller';
 
 // Import json files
 import config from '../config.js';
-import song from '../assets/song.json';
 import samples from '../assets/samples.json';
+import songs from '../assets/songs/index.js';
 
 class App {
   constructor(config) {
@@ -48,14 +48,14 @@ class App {
 
     this.renderer = new Renderer({
       state: this.state,
-      songTitle: song.header.name,
+      songs: songs,
+      selectSong: this.selectSong.bind(this),
       startCalibration: this.startCalibration.bind(this),
       restart: this.restart.bind(this),
       setGraphicsLoaded: this.setGraphicsLoaded.bind(this)
     });
 
     this.audioPlayer = new AudioPlayer({
-      song: song,
       samples: samples,
       setInstrumentsLoaded: this.setInstrumentsLoaded.bind(this),
       setSongProgress: this.setSongProgress.bind(this),
@@ -100,7 +100,6 @@ class App {
     this.renderer.renderLoadProgress(percentage);
     if (percentage === 100) {
       this.state.loaded = true;
-      this.audioPlayer.queueSong();
     }
   }
 
@@ -132,6 +131,11 @@ class App {
     this.audioPlayer.stop();
   }
 
+  /* Called when a song is picked on the song selection page */
+  selectSong(song) {
+    this.audioPlayer.loadSong(song.data);
+  }
+
   /* Called when user clicks start button in renderer.js */
   async startCalibration() {
     if (!this.poseController.initialized) await this.poseController.initialize();
@@ -161,4 +165,4 @@ class App {
   }
 }
 
-const app = new App(config);
+const app = new App(config);

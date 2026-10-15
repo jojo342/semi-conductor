@@ -27,10 +27,12 @@ export default class AudioPlayer {
   constructor(props) {
     this.props = props;
     this.instrumentsLoaded = 0;
-    this.activeInstruments = [];
+    this.instruments = Object.keys(props.samples);
+    this.activeInstruments = this.instruments.slice();
+    this.samplers = {};
+    this.parts = [];
     this.velocity = 0.7;  // Arbitrary starting point that will be overridden by user
     this.finishedInstruments = 0;
-    this.totalMeasures = (props.song.duration / 60) * (props.song.header.bpm / 4);
     this.loadInstruments();
   }
 
@@ -55,30 +57,41 @@ export default class AudioPlayer {
     this.generateSamplers({ gain, jcReverb, reverb });
   }
 
-  /* Generates samplers for each track in the piece */
+  /* Generates a sampler for each instrument in samples.json. Every song
+     uses these same instruments, so they're shared between songs. */
   generateSamplers(effects) {
     // Instruments should be given their official MIDI name, but lowercase,
     // e.g. 'cello'. This will be under tracks[i].instrument in the song json.
-    this.props.song.tracks.forEach((track) => {
-      this.activeInstruments.push(track.instrument);
-      track.sampler = new Tone.Sampler(
-        this.props.samples[track.instrument], // Sample URLs in samples.json
+    this.instruments.forEach((instrument) => {
+      this.samplers[instrument] = new Tone.Sampler(
+        this.props.samples[instrument], // Sample URLs in samples.json
         this.instrumentLoadCallback.bind(this), // Tells main.js the loading progress
         config.paths.samplesPath // Root path for samples
       ).chain(effects.gain, effects.jcReverb, effects.reverb, Tone.Master);
     });
   }
 
+  /* Swap in a new song, removing the notes of the previous one */
+  loadSong(song) {
+    Tone.Transport.stop();
+    this.parts.forEach(part => part.dispose());
+    this.parts = [];
+    this.song = song;
+    const beatsPerMeasure = song.header.timeSignature[0];
+    this.totalMeasures = (song.duration / 60) * (song.header.bpm / beatsPerMeasure);
+    this.queueSong();
+  }
+
   /* Go through each track and trigger load function */
   queueSong() {
-    const song = this.props.song;
-    const startTime = this.props.song.startTime;
+    const song = this.song;
+    const startTime = song.startTime;
 
     // Queue each of the tracks
     Tone.Transport.bpm.value = this.startingBpm = song.header.bpm;
     Tone.Transport.timeSignature = song.header.timeSignature;
     song.tracks.forEach((track) => {
-      this.queueTrack(track, track.sampler);
+      this.queueTrack(track, this.samplers[track.instrument]);
     });
 
     Tone.Transport.position = startTime;
@@ -86,7 +99,7 @@ export default class AudioPlayer {
 
   /* Add all notes to the Transport, with the relevant instrument */
   queueTrack(track, instrument) {
-    new Tone.Part((time, note) => {
+    const part = new Tone.Part((time, note) => {
       const measures = parseInt(Tone.Transport.position.split(':')[0]) + 1;
       this.props.setSongProgress(100 * measures / this.totalMeasures)
 
@@ -111,13 +124,13 @@ export default class AudioPlayer {
         this.props.triggerAnimation(track.instrument, duration, this.velocity);
       }
     }, track.notes).start();
+    this.parts.push(part);
   }
 
   /* Updates the loading screen with current progress */
   instrumentLoadCallback() {
     this.instrumentsLoaded++;
-    const totalTracks = this.props.song.tracks.length;
-    const percentage = 100 * this.instrumentsLoaded / totalTracks;
+    const percentage = 100 * this.instrumentsLoaded / this.instruments.length;
     this.props.setInstrumentsLoaded(percentage);
   }
 
@@ -148,4 +161,4 @@ export default class AudioPlayer {
     this.beatsElapsed = 0;
     Tone.Transport.bpm.value = this.startingBpm;
   }
-}
+}

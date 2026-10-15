@@ -32,6 +32,7 @@ export default class Renderer {
 
     this.pages = {
       start: document.querySelector('.page-start'),
+      songs: document.querySelector('.page-songs'),
       tutorial: document.querySelector('.page-tutorial'),
       main: document.querySelector('.page-main'),
       info: document.querySelector('.page-info'),
@@ -48,6 +49,7 @@ export default class Renderer {
       restartButtons: document.querySelectorAll('.button-restart'),
       infoButton: document.querySelector('.button-info'),
       songTitle: document.querySelector('.song-title'),
+      songList: document.querySelector('.song-list'),
       infoCloseButton: document.querySelector('.button-info-close'),
       tempo: document.querySelector('.tempo-meter'),
       calibrationOverlay: document.querySelector('.calibration-overlay'),
@@ -59,7 +61,8 @@ export default class Renderer {
       conductingOverlay: document.querySelector('.conducting-overlay')
     }
 
-    this.elems.songTitle.innerHTML = this.props.songTitle;
+    this.tutorialSeen = false;
+    this.renderSongList();
     this.prevTempo = null;
     this.tempo = null;
     this.isFinishPage = false;
@@ -89,7 +92,7 @@ export default class Renderer {
   /* Add event listeners now that DOM has loaded */
   addStartHooks() {
     this.elems.startButton.addEventListener('click', () => {
-      if (this.props.state.loaded) this.renderTutorialPage();
+      if (this.props.state.loaded) this.renderSongsPage();
     })
     this.elems.restartButtons.forEach((button) => {
       button.addEventListener('click', () => {
@@ -133,10 +136,46 @@ export default class Renderer {
     }, 1500);
   }
 
+  /* Song Selection Page */
+
+  renderSongList() {
+    this.props.songs.forEach((song) => {
+      const button = document.createElement('button');
+      button.className = 'song-card';
+      button.innerHTML = `
+        <span class="song-card-emoji">${song.emoji}</span>
+        <span class="song-card-name">${song.name}</span>
+        <span class="song-card-composer">${song.composer}</span>
+        <span class="song-card-blurb">${song.blurb}</span>`;
+      button.addEventListener('click', () => this.chooseSong(song));
+      this.elems.songList.appendChild(button);
+    });
+  }
+
+  renderSongsPage() {
+    hide(this.pages.start);
+    show(this.pages.songs, 'flex');
+  }
+
+  chooseSong(song) {
+    this.props.selectSong(song);
+    this.elems.songTitle.innerHTML = song.name;
+    hide(this.pages.songs);
+
+    // Only show the tutorial the first time; after that, go straight to
+    // finding the conductor's body
+    if (this.tutorialSeen) {
+      this.props.startCalibration();
+      this.renderCalibratePage();
+    } else {
+      this.renderTutorialPage();
+    }
+  }
+
   /* Tutorial Page */
 
   renderTutorialPage() {
-    hide(this.pages.start);
+    this.tutorialSeen = true;
     show(this.pages.tutorial)
     show(document.querySelector('.tutorial-part-1'), 'flex');
     this.addTutorialHooks();
@@ -355,7 +394,7 @@ export default class Renderer {
     hide(this.pages.finish);
     this.pages.finish.classList.remove('fade-in');
     hide(this.pages.main);
-    show(this.pages.start, 'flex');
+    show(this.pages.songs, 'flex');
     this.elems.calibrationOverlay.classList.remove('success');
     document.querySelector('.instructions p').innerHTML = "Fit your body in frame, Maestro. This is a one person experiment.";
     document.querySelector('.instructions p').style.transform = "scale(1)";
