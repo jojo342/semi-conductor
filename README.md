@@ -24,7 +24,7 @@ What's different from the original:
 - **Privacy:** Google Analytics and the social-sharing tags were removed.
   The webcam video stays on the computer; nothing is uploaded.
 - **Ready to host:** a built copy of the site is in `docs/`, so it can be
-  published with GitHub Pages (Settings → Pages → branch `main`, folder
+  published with GitHub Pages (Settings → Pages → branch `master`, folder
   `/docs`). `docs/winter-preview.mp3` is a rough audio preview of the
   arrangement.
 
