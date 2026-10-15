@@ -21,8 +21,9 @@ under the License.
 
 export default {
   "paths": {
-    "samplesPath": "/samples/",
-    "texturesPath": "/textures/"
+    "samplesPath": "samples/",
+    "texturesPath": "textures/",
+    "weightsPath": "weights/mobilenet_v1_075/"
   },
   "display": {
     "height": 500,

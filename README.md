@@ -1,3 +1,38 @@
+# Semi-Conductor: Winter classroom edition ❄️🎻
+
+This is a fork of Google Creative Lab's open-source
+[Semi-Conductor](https://github.com/googlecreativelab/semi-conductor), rebuilt
+for a 6th-grade computer science class after the original website was taken
+down. It is not an official Google product.
+
+What's different from the original:
+
+- **Song:** the first movement of Vivaldi's *Winter* (L'inverno, RV 297,
+  Op. 8 No. 4), *Allegro non molto*, bars 1-26 (about a minute at the
+  starting tempo). It is converted from the
+  [Mutopia Project](https://www.mutopiaproject.org/) edition, licensed
+  [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/).
+  Track mapping: solo violin → `violin`, 1st & 2nd violins →
+  `string ensemble 1`, viola → `viola`, cello/continuo → `cello` and
+  `contrabass` (an octave lower).
+- **Instrument sounds:** Google never published the original recordings, so
+  this uses free samples from
+  [tonejs-instruments](https://github.com/nbrosowsky/tonejs-instruments)
+  (CC BY 3.0). See `static/samples/CREDITS.md`.
+- **Body tracking model:** the PoseNet weights are stored in
+  `static/weights/` instead of being downloaded from Google Cloud Storage.
+- **Privacy:** Google Analytics and the social-sharing tags were removed.
+  The webcam video stays on the computer; nothing is uploaded.
+- **Ready to host:** a built copy of the site is in `docs/`, so it can be
+  published with GitHub Pages (Settings → Pages → branch `main`, folder
+  `/docs`). `docs/winter-preview.mp3` is a rough audio preview of the
+  arrangement.
+
+To rebuild after changing something: `yarn`, then
+`npx parcel build src/index.html --out-dir docs --public-url ./ --no-source-maps`.
+
+---
+
 <table>
   <tr>
     <td>

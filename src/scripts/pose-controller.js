@@ -51,7 +51,10 @@ export default class PoseController {
       canvas: canvas
     });
 
-    this.net = await posenet.load(config.posenet.mobileNetArchitecture);
+    // Load the PoseNet weights bundled with the app (in /static/weights)
+    // rather than from Google Cloud Storage, so it keeps working offline
+    const variables = await new posenet.CheckpointLoader(config.paths.weightsPath).getAllVariables();
+    this.net = new posenet.PoseNet(new posenet.MobileNet(variables, posenet.mobileNetArchitectures[75]));
     this.initialized = true;
 
     this.loop();

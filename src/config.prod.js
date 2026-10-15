@@ -21,7 +21,8 @@ under the License.
 
 import config from './config.build';
 
-config.paths.samplesPath = '/static' + config.paths.samplesPath;
-config.paths.texturesPath = '/static' + config.paths.texturesPath;
+config.paths.samplesPath = '/static/' + config.paths.samplesPath;
+config.paths.texturesPath = '/static/' + config.paths.texturesPath;
+config.paths.weightsPath = '/static/' + config.paths.weightsPath;
 
 export default config;
