@@ -19,6 +19,13 @@ What's different from the original:
     for strings as an oom-pah galop (public-domain melody).
   - **The Star-Spangled Banner**: the full melody in B-flat with a simple
     string accompaniment (public-domain melody).
+- **Tempo follows your beats:** the original set the tempo from how fast
+  the hands were moving, so big slow strokes (and PoseNet's wobble) made the
+  music race ahead. Now each bounce of the hand (the bottom of a
+  down-stroke) is a beat, and the tempo is the time between beats, like a
+  real orchestra watching a conductor (`src/scripts/beat-detector.js`). The
+  orchestra waits for the first two bounces so it starts at the
+  conductor's tempo.
 - **Instrument sounds:** Google never published the original recordings, so
   this uses free samples from
   [tonejs-instruments](https://github.com/nbrosowsky/tonejs-instruments)

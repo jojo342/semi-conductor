@@ -45,8 +45,8 @@ export default {
     "jumpDetection": false,
     "smoothing": 0.67,
     "maxJumpRatio": 0.4,
+    "beatSmoothing": 0.3, // Lighter smoothing for the hands when finding beats
     "jumpResetTime": 500,
-    "speedSmoothing": 0.8
   },
   "posenet": {
     "algorigthm": "multi-pose",
@@ -59,9 +59,12 @@ export default {
   },
   "detection": {
     "calibrationMargin": 50,
-    "distanceMeasurementNumber": 5,
-    "distanceMeasurementInterval": 50,
-    "beatDistanceArmspanRatio": 0.4,
+    "beatMovementArmspanRatio": 0.1, // How far the hand must bounce back up for a beat
+    "minimumBeatMovement": 20, // ...but at least this many pixels
+    "beatsToCompare": 5, // Tempo is the median time between the last few beats
+    "maximumBeatGap": 2500, // ms; a longer gap is a pause, not a slow beat
+    "minimumBeatConfidence": 0.3, // Ignore hand positions PoseNet is unsure of
+    "startWithoutBeatsAfter": 3000, // ms of moving without clear beats before music starts anyway
     "minimumBpm": 40,
     "maximumBpm": 200,
     "minimumDuration": 0.05,

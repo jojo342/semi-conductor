@@ -22,8 +22,9 @@ under the License.
 import config from '../config';
 import * as posenet from '@tensorflow-models/posenet';
 import PosenetRenderer from './posenet-renderer';
-import { smooth, smoothNum } from './smoothing';
-import { getKeypoint, getKeypoints, getMidpoint, getDistance, getAverageDifference, getDistanceFromOrigin, arrayWithLargestVariation } from './helpers';
+import BeatDetector from './beat-detector';
+import { smooth } from './smoothing';
+import { getKeypoint, getKeypoints, getMidpoint, getDistance } from './helpers';
 
 // FYI -- 'leftWrist' is actually your right wrist ¯\_(ツ)_/¯ 
 
@@ -31,7 +32,19 @@ export default class PoseController {
   constructor(props) {
     this.props = props;
     this.armspan = 400;
-    this.isCalculatingSpeed = false;
+
+    // One beat detector per hand; whichever hand is conducting sets the tempo
+    const beatOptions = {
+      minBpm: config.detection.minimumBpm,
+      maxBpm: config.detection.maximumBpm,
+      maxBeatGap: config.detection.maximumBeatGap,
+      beatsToCompare: config.detection.beatsToCompare,
+      smoothing: config.smoothing.beatSmoothing
+    };
+    this.beatDetectors = {
+      leftWrist: new BeatDetector(beatOptions),
+      rightWrist: new BeatDetector(beatOptions)
+    };
     this.initialized = false;
     this.playedFirstNote = false;
     this.isEstimatingPose = false;
@@ -72,14 +85,18 @@ export default class PoseController {
       this.props.setTempo(0);
     }
 
+    if (!this.props.state.conducting) this.resetBeatDetectors();
+
     if (this.pose && this.props.state.calibrating) {
       if (this.detectCalibrationPose()) this.handleCalibration();
     }
 
     if (this.pose && this.props.state.conducting) {
-      this.detectTempo().then((tempo) => {
-        if (this.playedFirstNote) this.props.setTempo(tempo);
-      }).catch(() => { /* Ignore */ });
+      const tempo = this.detectTempo();
+      if (tempo) {
+        this.hasTempo = true;
+        this.props.setTempo(tempo);
+      }
 
       this.props.setInstrumentGroup(this.getHandZone());
       this.props.setVelocity(this.getNormalisedHeight());
@@ -115,6 +132,13 @@ export default class PoseController {
 
     if (pose.score >= config.posenet.minPoseConfidence) {
       this.poseVisible = true;
+      // Keep the unsmoothed wrists for beat detection, as the heavy
+      // smoothing below flattens out quick conducting strokes
+      this.rawWrists = {};
+      ['leftWrist', 'rightWrist'].forEach((part) => {
+        const keypoint = getKeypoint(pose, part);
+        this.rawWrists[part] = { y: keypoint.position.y, score: keypoint.score };
+      });
       return smooth(pose, this.armspan);
     } else {
       this.poseVisible = false;
@@ -154,38 +178,42 @@ export default class PoseController {
     this.props.handleCalibration();
   }
 
-  /* Tempo detection */
-  async detectTempo() {
-    if (this.isCalculatingSpeed) throw 'Waiting for calculation to complete.';
-    this.isCalculatingSpeed = true;
+  /* Tempo detection: feed both hands' heights to their beat detectors,
+     and use the tempo from whichever hand is moving up & down the most */
+  detectTempo() {
+    const now = performance.now();
+    const threshold = Math.max(
+      config.detection.beatMovementArmspanRatio * this.armspan,
+      config.detection.minimumBeatMovement
+    );
+    const tempos = {};
+    Object.keys(this.beatDetectors).forEach((part) => {
+      const hand = this.rawWrists[part];
+      // Skip frames where PoseNet isn't sure where the hand is
+      if (hand.score < config.detection.minimumBeatConfidence) return;
+      tempos[part] = this.beatDetectors[part].update(hand.y, now, threshold);
+    });
 
-    const num = config.detection.distanceMeasurementNumber;
-    const interval = config.detection.distanceMeasurementInterval;
+    const conductingHand = Object.keys(this.beatDetectors).reduce((a, b) =>
+      this.beatDetectors[a].recentRange() >= this.beatDetectors[b].recentRange() ? a : b);
+    return tempos[conductingHand];
+  }
 
-    // Get an array of each hand's distance from the origin at various intervals
-    const distances = [[], []];
-    for (let i = 0; i < num; i++) {
-      setTimeout(() => {
-        if (!this.pose) return;
-        const leftHand = getKeypoint(this.pose, 'leftWrist');
-        const rightHand = getKeypoint(this.pose, 'rightWrist');
-        distances[0].push(getDistanceFromOrigin(leftHand.position));
-        distances[1].push(getDistanceFromOrigin(rightHand.position));
-      }, interval * i);
-    }
+  resetBeatDetectors() {
+    Object.keys(this.beatDetectors).forEach(part => this.beatDetectors[part].reset());
+    this.hasTempo = false;
+    this.movingSince = null;
+    this.playedFirstNote = false;
+  }
 
-    // After the above finishes, find the hand that moved the most,
-    // and get bpm based on that hand's speed
-    return new Promise((resolve) => {
-      setTimeout((() => {
-        const conductingHandDistances = arrayWithLargestVariation(distances);
-        const speed = this.getBpmFromDistances(conductingHandDistances, interval);
-        let bpm = smoothNum(speed, config.smoothing.speedSmoothing);
-        bpm = Math.min(bpm, config.detection.maximumBpm);
-        this.isCalculatingSpeed = false;
-        resolve(bpm);
-      }).bind(this), interval * num + 1)
-    })
+  /* Like a real orchestra, wait for the conductor's first couple of beats
+     so the music starts at their tempo. If the hands are moving but no
+     beats are found (e.g. waving side to side), start anyway after a bit */
+  readyToStart() {
+    if (this.hasTempo || this.playedFirstNote) return true;
+    const now = performance.now();
+    if (this.movingSince === null) this.movingSince = now;
+    return now - this.movingSince > config.detection.startWithoutBeatsAfter;
   }
 
   /* Stop music if hands not moving */
@@ -214,7 +242,7 @@ export default class PoseController {
       if (diff1 < max && diff2 < max) {
         this.props.stop();
       } else {
-        if (this.props.state.conducting && this.poseVisible) {
+        if (this.props.state.conducting && this.poseVisible && this.readyToStart()) {
           this.playedFirstNote = true;
           this.props.start();
         }
@@ -238,16 +266,6 @@ export default class PoseController {
     const leftWrist = getKeypoint(this.pose, 'leftWrist');
     const rightWrist = getKeypoint(this.pose, 'rightWrist');
     return getDistance(leftWrist.position, rightWrist.position);
-  }
-
-  /* Get a list of positions and interval between measurements, return bpm */
-  getBpmFromDistances(distances, interval) {
-    const avg = getAverageDifference(distances);
-    const pxPerMs = avg / interval;
-    const pxPerMinute = pxPerMs * 1000 * 60;
-    const beatDistance = this.armspan * config.detection.beatDistanceArmspanRatio;
-    const beatsPerMinute = pxPerMinute / beatDistance;
-    return beatsPerMinute;
   }
 
   /* Check whether hands are to the left, right or center */
